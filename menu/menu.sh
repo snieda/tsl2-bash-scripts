@@ -18,9 +18,14 @@
 #    - menu.sh myfile         # will read file myfile.csv as list
 #    - menu.sh myfile xyz.sh  # used variable myfile and read list from xyz.sh
 #    - menu.sh myfile "*.txt" # select a file from *.txt, result is in $myfile
+#
+# NOTE: 
+#    - if figlet is installed, an ascii title will be printed
+#    - if the file 'menu-alias.sh' was found it will be loaded
+#    - finally, the file 'menu-$USERNAME.sh' with results will be created
 ##############################################################################
 
-[ "$1" == "" ] && head -n 21 $0 && exit 1
+[ "$1" == "" ] && head -n 26 $0 && exit 1
 for a in "$*" ; do declare -gt $a; echo $a; done;
 
 [ -e menu-alias.sh ] && source menu-alias.sh
@@ -35,9 +40,10 @@ NAME=$1
 case $2 in *[*]*) LIST=$2;; *[.]*) LIST=$(< $2);; *) LIST=$(< $NAME.csv);; esac
 IFS_=$IFS
 [ "$2" != "-s" ] && [ "$3" != "-s" ] && IFS=$'\n'
-PS3="$(printbar "PLEASE SELECT" " 1..$($LIST | wc -l)") "$'\n'": "
+PS3="$(printbar "PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
 
 clear
+[ "$(which figlet)" != "" ] && figlet "$NAME"
 printbar "PLEASE SELECT" " $NAME"
 select i in $LIST ; do 
 	[ "$i" == "" ] || [ "$i" == "0" ] && break
