@@ -23,7 +23,7 @@
 #   use: echo "file is ${VALUES[file]}"
 ##############################################################################
 
-[ "$1" == "--help" ] || [ "$1" == "" ] && head -n21 $0 && exit 0
+[ "$1" == "--help" ] || [ "$1" == "" ] && head -n25 $0 && exit 0
 
 # definition block
 # DEBUG=y # will print all evaluations
