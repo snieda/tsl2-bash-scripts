@@ -11,13 +11,13 @@ Please look at the scripts themselves to get futher informations
 
 ## The Menu
 
-![doc/testmenu.png](testmenu)
+![testmenu](doc/testmenu.png)
 
 ## The Parameter Parser
 
-![doc/pars.png](pars)
+![pars](doc/pars.png)
 
 ## The Map Provider
 
-![doc/readmap.png](readmap)
+![readmap](doc/readmap.png)
 
