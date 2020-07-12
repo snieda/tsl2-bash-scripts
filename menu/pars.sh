@@ -1,5 +1,8 @@
 #!/bin/bash
 ##############################################################################
+# pars.sh (Thomas Schneider 2020)
+# reads parameters from manual and provides checked arguments to the caller
+#
 # usage:
 # pars <manual> <program-name> <args>
 # with:
@@ -20,8 +23,10 @@
 #   use: echo "file is ${VALUES[file]}"
 ##############################################################################
 
+[ "$1" == "--help" ] || [ "$1" == "" ] && head -n21 $0 && exit 0
+
 # definition block
-DEBUG=y # will print all evaluations
+# DEBUG=y # will print all evaluations
 MANUAL="$1"
 shift
 PROG=${1:-NO-NAME}

@@ -24,18 +24,21 @@
 for a in "$*" ; do declare -gt $a; echo $a; done;
 
 [ -e menu-alias.sh ] && source menu-alias.sh
+[ -e menu-$USERNAME.sh ] && source menu-$USERNAME.sh
 
-edit() { read -ep "$1: " -i $1 edit; declare -xt $1=$edit; } 
-choose() { source menu.sh $1 "$2"; }
+edit() { read -ep "$1: " -i $1 edit; declare -xt $1=$edit; NAME=$1; CMD=$edit; } 
+choose() { source menu.sh $1 "$2" "$3"; }
+bar__() { for i in {1..26}; do printf "%s" $1; done; }
+printbar() { printf "<"; bar__ "-"; printf "|%14s%-14s|" $1 $2; bar__ "-"; printf ">%s" $'\n'; }
 
 NAME=$1
 case $2 in *[*]*) LIST=$2;; *[.]*) LIST=$(< $2);; *) LIST=$(< $NAME.csv);; esac
 IFS_=$IFS
-[ "$3" != "-s" ] && IFS=$'\n'
-PS3="\\--------------------| PLEASE SELECT 1..$($LIST | wc -l) |------------------------------/"$'\n'": "
+[ "$2" != "-s" ] && [ "$3" != "-s" ] && IFS=$'\n'
+PS3="$(printbar "PLEASE SELECT" " 1..$($LIST | wc -l)") "$'\n'": "
 
 clear
-echo "/--------------------| PLEASE SELECT $NAME |---------------------------------\\"
+printbar "PLEASE SELECT" " $NAME"
 select i in $LIST ; do 
 	[ "$i" == "" ] || [ "$i" == "0" ] && break
 	IFS=$IFS_
@@ -44,5 +47,5 @@ select i in $LIST ; do
 	[ "$CMD" != "" ] && declare -tx $NAME="$CMD";
 	eval "$CMD"
 done
-echo "/-------------------------| $NAME: $CMD |--------------------------------------\\"
-
+echo "$NAME=$CMD" >> menu-$USERNAME.sh
+printbar "$NAME: " "$CMD"

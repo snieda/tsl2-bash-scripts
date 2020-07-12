@@ -1,6 +1,10 @@
 #!/bin/bash
-#
+##############################################################################
+# readmaps.sh (Thomas Schneider 2020)
+# 
 # maps all key/values read from given map file (first 2 lines reserved for header)
+#
+# usage: $0 <map-file> <map-name> [-quiet]
 # arguments:
 #   1: map file (e.g.: process.map)
 #   2: map name (e.g.: values)
@@ -8,9 +12,10 @@
 # use:
 #   source readmap.sh 
 #   getport "fondswechsel"
+##############################################################################
 
 # help
-[ "$1" == "--help" ] && echo "usage: $0 <map-file> <map-name> [-quiet]" && exit 0
+[ "$1" == "--help" ] || [ "$1" == "" ] && head -n15 $0 && exit 0
 
 # definitions
 MAPFILE=${1:-values.map}    # map file path
