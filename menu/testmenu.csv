@@ -1,0 +1,7 @@
+source menu.sh testmenu # Rekursiver Aufruf!
+echo hallo              # Nur ein Test
+read -p ":" meininput   # Texteingabe
+edit meininput          # Texteingabe
+select file in *.csv; do echo $file; done;           # Dateliste
+test                    # einfach nur ein Wert
+choose myfile "*.sh"    # using alias 'choose'
