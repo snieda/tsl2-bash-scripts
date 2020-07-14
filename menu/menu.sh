@@ -44,7 +44,7 @@ for a in "$*" ; do declare -gt $a; echo $a; done;
 [ -e menu-$USERNAME.def ] && source menu-$USERNAME.def
 
 run() { source $*; }
-edit() { read -ep "$1: " -i $1 edit; declare -xt $1=$edit; NAME=$1; CMD=$edit; } 
+edit() { read -ep ": " -i $1 edit; declare -xt $1=$edit; NAME=$1; CMD=$edit; } 
 choose() { source menu.sh $1 "$2" "$3"; }
 bar__() { for i in {1..26}; do printf "%s" $1; done; }
 printbar() { printf "$C_FRM<"; bar__ "-"; printf "|%14s%-14s|" $1 $2; bar__ "-"; printf ">%s$R" $'\n'; }
@@ -68,6 +68,7 @@ select i in $LIST ; do
 	[ "$i" == "" ] || [ "$i" == "0" ] && break
 	IFS=$IFS_
 	CMD=${i%#*}
+	CMD=$(echo "$CMD" | sed 's/\x1b\[[0-9;]*m//g')
 	echo $CMD
 	[ "$CMD" != "" ] && declare -tx $NAME="$CMD";
 	eval "$CMD"
