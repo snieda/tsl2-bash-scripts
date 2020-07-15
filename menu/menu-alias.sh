@@ -1,7 +1,15 @@
-# convenience methods for styling
+# convenience variables, aliases and methods for styling
+E0='\x1b[00;'
+E1='\x1b[01;'
+C0="$E0$Im"
+C1="$EE[01;$Im"
+I=30
 
 RESTORE='\x1b[0m'
 R=$RESTORE
+
+COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
+for c in $COLORS; do I="$I+1"; declare $c="$C0"; echo "$c=$C0 "; done;
 
 RED='\x1b[00;31m'
 GREEN='\x1b[00;32m'
@@ -23,4 +31,3 @@ C_FRM=$BLUE
 C_CMD=$LCYAN
 C_PAR=$LGREEN
 C_CMT=$LRED
-

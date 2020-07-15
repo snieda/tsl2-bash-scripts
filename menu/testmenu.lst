@@ -2,13 +2,13 @@ source menu.sh testmenu                     # recursive call!
 choose testmenusimple -s                    # sub-menu using alias choose
 echo $meininput                             # use a previously edited value
 read -p ":" meininput                       # text input
-edit meininput                              # text input with alias/function
-select file in *.csv; do echo $file; done;  # file list
+input meininput                             # text input with alias/function
+select file in *.lst; do echo $file; done;  # file list
 test                                        # only a value
 choose myfile "*.sh"                        # file list using alias 'choose'
-echo $USERNAME                              # print value
+show $USERNAME                              # print value
 #------------------------Preferences----------------------------------------
-vim menu-defaults.def                       # edit default values
-vim menu-$USERNAME.def                      # edit user values
-vim menu-alias.sh                           # edit aliases
+edit menu-defaults.def                      # edit default values
+edit menu-$USERNAME.def                     # edit user values
+edit menu-alias.sh                          # edit aliases
 exit 0                                      # quit
