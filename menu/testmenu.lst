@@ -7,6 +7,7 @@ select file in *.lst; do echo $file; done;  # file list
 test                                        # only a value
 choose myfile "*.sh"                        # file list using alias 'choose'
 show $USERNAME                              # print value
+run  testscript.sh $meininput               # starts a script with dynamic pars
 #------------------------Preferences----------------------------------------
 edit menu-defaults.def                      # edit default values
 edit menu-$USERNAME.def                     # edit user values
