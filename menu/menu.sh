@@ -43,43 +43,49 @@ title=<<EOF
 EOF
 
 [ "$1" == "" ] && head -n 34 $0 && exit 1
-for a in "$*" ; do declare -gt $a; echo $a; done;
+for a in "$*" ; do [ "$a" == *"="* ] && declare -gt $a; echo $a; done;
 
 [ -e menu-alias.sh ] && source menu-alias.sh
 [ -e menu-defaults.def ] && [ "$export" == "true" ] && (export $(xargs <menu-defaults.def) || source menu-defaults.def)
 [ -e menu-$USERNAME.def ] && [ "$export" == "true" ] && (export $(xargs <menu-$USERNAME.def) || source menu-$USERNAME.def)
 
-run() { source $*; }
+run() { bash $1 $2 $3; }
 input() { read -ep ": " -i "${!1}" edt; declare -g $1=$edt; echo "$1=$edt" >> menu-$USERNAME.def; } 
-choose() { source menu.sh $1 "$2" "$3"; }
-edit() { ${EDITOR:-vim} $*; }
-show() { echo $*; }
+choose() { bash menu.sh "$@"; }
+edit() { ${EDITOR:-vim} "$*"; }
+show() { echo "$@"; }
 
 bar__() { for i in {1..26}; do printf "%s" $1; done; }
 printbar() { printf "$C_FRM<"; bar__ "-"; printf "|%14s%-14s|" $1 $2; bar__ "-"; printf ">%s$R" $'\n'; }
 setcolors() { echo "$1" | sed -nEe "s/(\w+|[#-]+)(.*)(([#]|[-]{2}).*)/$C_CMD\1$C_PAR\2$C_CMT\3$R/p"; }
 
-NAME=$1
-case $2 in *[*]*) LIST=$2;; *[.]*) LIST=$(< $2);; *) LIST=$(< $NAME.lst) ;; esac
-[ "$subst" == "true" ] && LIST=$(printf "$LIST" | envsubst "$(set -o posix; set)")
-IFS_=$IFS
-[ "$2" != "-s" ] && [ "$3" != "-s" ] && [[ "$2" != *"*"* ]] && RUNLINE="true" && IFS=$'\n' && LIST=$(setcolors "$LIST")
-PS3="$(printbar "PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
+menu_main() { 
+	NAME=$1
+	IFS_=$IFS
+	# declare RUNLINE="true"
 
-BANNER=${BANNER:-figlet}
-ascii_banner_installed=$(which $BANNER) # on cygwin, 'which' prints always the path
-${reset:-clear}
-echo -en $LYELLOW
-if [ "$ascii_banner_installed" != "" ]; then $BANNER "$NAME"; else head -n 42 $0 | tail -n 6; fi
-printbar "PLEASE SELECT" " $NAME"
-select i in $LIST ; do 
-	[ "$i" == "" ] || [ "$i" == "0" ] && break
-	IFS=$IFS_
-	CMD=${i%#*}
-	CMD=$(echo "$CMD" | sed 's/\x1b\[[0-9;]*m//g')
-	echo -en $C_FRM$CMD$R
-	[ "$CMD" != "" ] && declare -x $NAME="$CMD";
-	[ "$RUNLINE" == "true" ] && eval "$CMD"
-done
-echo "$NAME=$CMD" >> menu-$USERNAME.def
-printbar "$NAME: " "$CMD"
+	case $2 in *[*]*) LIST=$2;; *[.]*) LIST=$(< $2);; *) LIST=$(< $NAME.lst) ;; esac
+	[ "$subst" == "true" ] && LIST=$(printf "$LIST" | envsubst "$(set -o posix; set)")
+	[ "$2" != "-s" ] && [ "$3" != "-s" ] && [[ "$2" != *"*"* ]] && RUNLINE="true" && IFS=$'\n' && LIST=$(setcolors "$LIST") || RUNLINE="false"
+	PS3="$(printbar "PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
+
+	BANNER=${BANNER:-figlet}
+	ascii_banner_installed=$(which $BANNER) # on cygwin, 'which' prints always the path
+	${reset:-clear}
+	echo -en $LYELLOW
+	if [ "$ascii_banner_installed" != "" ]; then $BANNER "$NAME"; else head -n 42 $0 | tail -n 6; fi
+	printbar "PLEASE SELECT" " $NAME"
+	select i in $LIST ; do 
+		[ "$i" == "" ] || [ "$i" == "0" ] && break
+		IFS=$IFS_
+		CMD=${i%#*}
+		CMD=$(echo "$CMD" | sed 's/\x1b\[[0-9;]*m//g')
+		echo -en $C_FRM$CMD$R
+		[ "$CMD" != "" ] && declare -x $NAME="$CMD";
+		[ "$RUNLINE" == "true" ] && eval "$CMD"
+	done
+	echo "$NAME=$CMD" >> menu-$USERNAME.def
+	printbar "$NAME: " "$CMD"
+}
+
+menu_main "$@"
