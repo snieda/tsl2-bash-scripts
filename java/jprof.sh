@@ -12,7 +12,7 @@ JAVA_OPTS="$HPROF_CPU $HPROF_HEAP $JAVA_OPTS"
 [ "$1" == "--init" ] && echo "hprof set in JAVA_OPTS" && exit 0
 
 PRC=${1:-java}
-DUMPFILE=${2:-$PRC.bin}
+DUMPFILE=${2:-$PRC-dump.bin}
 jmap -dump:live,file=$DUMPFILE $(jps -l | grep $PRC | grep -Eo "^[0-9]+")
 jhat $DUMPFILE
 
