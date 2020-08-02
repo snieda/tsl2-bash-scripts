@@ -1,0 +1,4 @@
+**/*.dump.*
+**/*.log
+menu/*default*.def
+menu/menu-ts.def
