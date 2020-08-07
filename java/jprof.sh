@@ -16,8 +16,10 @@ for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && echo $a; done;
 PRC=${1:-java}
 DUMPFILE=${2:-$PRC-dump.bin}
 HATPORT=${3:-7000}
+PID=$(jps -l | grep $PRC | grep -Eo "^[0-9]+")
 
-jmap -dump:live,file=$DUMPFILE $(jps -l | grep $PRC | grep -Eo "^[0-9]+")
+[ "$?" != "0" ] || [ "$PID" == "" ] && echo "java process not found for \"$PRC\"" && exit 1
+jmap -dump:live,file=$DUMPFILE $PID
 jhat -port $HATPORT $DUMPFILE
 
 [ "$?" == "0" ] && [ "$(whereis chrome) != "" ] && chrome http://localhost:$HATPORT

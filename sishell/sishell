@@ -1,8 +1,8 @@
 #!/bin/bash
 ##############################################################################
-# provides a simple menu (cp Thomas Schneider 2020)
+# Simple Interactive Shell - provides a simple menu (cp Thomas Schneider 2020)
 #
-# usage: menu <name> [file-name or wildcard] [-s] [subst=true] [BANNER=<banner>]
+# usage: sishell <name> [file-name or wildcard] [-s] [subst=true] [BANNER=<banner>]
 #             [EDITOR=<editor>] [before=<clear>] [log=true]
 # - name        : will be used as variable name and to read the file '$1.lst'
 # - file-or-glob: if wildcard, select from file-list, else menu file name
@@ -15,59 +15,77 @@
 #
 # - each line has structure: COMMAND # DESCRIPTION
 #   with:
-#    - COMMAND as any shell command. e.g.: 'menu.sh' for recursion 
+#    - COMMAND as any shell command. e.g.: 'sishell' for recursion 
 #      'read' for input or 'echo' for printing result
 #      for complex/unreadable commands, define your own aliases or functions!
 #
 # - examples:
-#    - menu.sh myfile         # will read file myfile.lst as list
-#    - menu.sh myfile xyz.sh  # used variable myfile and read list from xyz.sh
-#    - menu.sh myfile "*.txt" # select a file from *.txt, result is in $myfile
+#    - sishell myfile         # will read file myfile.lst as list
+#    - sishell myfile xyz.sh  # used variable myfile and read list from xyz.sh
+#    - sishell myfile "*.txt" # select a file from *.txt, result is in $myfile
 #
 # you may use the folowing convenience methods in your menu list file:
 #    editor, choose, edit, show, run
 # NOTE: 
 #    - if figlet is installed, an ascii title will be printed
-#    - if the file 'menu-alias.sh' was found it will be loaded
-#    - finally, the file 'menu-$USERNAME.sh' with results will be created
+#    - if the file 'sishell-alias.sh' was found it will be loaded
+#    - finally, the file 'sishell-$USERNAME.sh' with results will be created
 ##############################################################################
 
 title=<<EOF
- __  __                  
-|  \/  | ___ _ __  _   _ 
-| |\/| |/ _ \ '_ \| | | |
-| |  | |  __/ | | | |_| |
-|_|  |_|\___|_| |_|\__,_|
-                         
+ ____ ___ ____  _          _ _ 
+/ ___|_ _/ ___|| |__   ___| | |
+\___ \| |\___ \| '_ \ / _ \ | |
+ ___) | | ___) | | | |  __/ | |
+|____/___|____/|_| |_|\___|_|_|
+                               
 EOF
 
 echo "starting: $0 $@"
 [ "$1" == "" ] || [ "$1" == "--help" ] && head -n 33 $0 && exit 1
 echo -en "setting parameters: "; for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && echo $a; done;
 
-[ -e menu-alias.sh ] && source menu-alias.sh
-[ -e menu-defaults.def ] && source menu-defaults.def
-[ -e menu-$USERNAME.def ] && source menu-$USERNAME.def
-
-[ "$log" == "true" ] && echo() { printf "%s\n" $* | tee -a menu.log; }
-run() { bash $1 $2 $3; }
-input() { read -ep ": " -i "${!1}" edt; declare -g $1=$edt; echo "$1=\"$edt\"" >> menu-$USERNAME.def; } 
-choose() { bash menu.sh "$@"; }
+SELF=$(basename $0); SELF=${SELF%.*};
+[ "$log" == "true" ] && echo() { printf "%s\n" $* | tee -a $ENV_DIR/$SELF.log; }
+run() { bash "$@"; }
+input() { read -ep ": " -i "${!1}" edt; declare -g $1="$edt"; echo "$1=\"$edt\"" >> $ENV_DIR/$SELF-$USERNAME.def; } 
+inrun() { input $1; eval "${!1}"; }
+choose() { bash $SELF "$@"; }
 edit() { ${EDITOR:-vim} "$*"; }
+ffind() { find ~/ -type f -name "$1" -mtime $2 -exec grep "$3" {} \; -exec echo {} \; | xargs edit; }
 show() { echo "$@"; }
-sysinfo() { uname -a; id; df -TPh; ifconfig; ipconfig; cat /proc/cpuinfo; cat /proc/meminfo; }
-# log() { eval "$*" >> menu.log; edit menu.log; }
+sysinfo() { uname -a; id; free; df -TPh; ifconfig; ipconfig; lscpu; lsblk; lshw -short; lspci; fdisk -l;}
+# log() { eval "$*" >> $ENV_DIR/$SELF.log; edit $ENV_DIR/$SELF.log; }
 
 bar__() { for i in {1..26}; do printf "%s" $1; done; }
 printbar() { printf "$C_FRM<"; bar__ "-"; printf "|%14s%-14s|" $1 $2; bar__ "-"; printf ">%s$R" $'\n'; }
 setcolors() { echo "$1" | sed -nEe "s/(\w+|[#-]+)(.*)(([#]|[-]{2}).*)/$C_CMD\1$C_PAR\2$C_CMT\3$R/p"; }
 
+create_env() {
+	[ -e $1 ] && ENV_DIR=".$SELF.$(basename $1)" || ENV_DIR=".$SELF.$1"
+
+	if [ ! -e $ENV_DIR ]; then
+		echo "first start -> creating environment \"$ENV_DIR\""
+		mkdir $ENV_DIR
+		cp $(dirname $0)/$SELF-*.sh  $ENV_DIR
+		cp $(dirname $0)/$SELF-*.def $ENV_DIR
+		cp $(dirname $0)/$SELF-*.lst $ENV_DIR
+	fi
+	[ -e $ENV_DIR/$SELF-alias.sh ] && source $ENV_DIR/$SELF-alias.sh
+	[ -e $ENV_DIR/$SELF-defaults.def ] && source $ENV_DIR/$SELF-defaults.def
+	[ -e $ENV_DIR/$SELF-$USERNAME.def ] && source $ENV_DIR/$SELF-$USERNAME.def
+
+}
+
 menu_main() { 
 	NAME=$1
 	IFS_=$IFS
-	# declare RUNLINE="true"
 
-	case $2 in *[*]*) LIST=$2;; *[.]*) LIST=$(< $2);; *) LIST=$(< $NAME.lst) ;; esac
+	case $2 in 
+		*[*]*) LIST=$2;; 
+		*[.]*) LIST=$(< $2);; 
+		*) [  -e $NAME ] && LIST=$(< $NAME) && (NAME=$(basename $NAME); NAME=${NAME%%.*}) || LIST=$(< $NAME.lst) ;; 
+	esac
 	[ "$subst" == "true" ] && LIST=$(printf "$LIST" | envsubst "$(set -o posix; set)")
 	[ "$2" != "-s" ] && [ "$3" != "-s" ] && [[ "$2" != *"*"* ]] && RUNLINE="true" && IFS=$'\n' && LIST=$(setcolors "$LIST") || RUNLINE="false"
 	PS3="$(printbar "PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
@@ -87,8 +105,9 @@ menu_main() {
 		[ "$CMD" != "" ] && declare -x $NAME="$CMD";
 		[ "$RUNLINE" == "true" ] && eval "$CMD" || break
 	done
-	echo "$NAME=\"$CMD\"" >> menu-$USERNAME.def
+	echo "${NAME% *}=\"$CMD\"" >> $ENV_DIR/$SELF-$USERNAME.def
 	printbar "$NAME: " "$CMD"
 }
 
+create_env $1
 menu_main "$@"

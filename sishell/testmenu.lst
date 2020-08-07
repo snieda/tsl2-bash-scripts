@@ -1,4 +1,4 @@
-source menu.sh testmenu                     # recursive call!
+source sishell testmenu                     # recursive call!
 choose testmenusimple -s                    # sub-menu using alias choose
 echo $meininput                             # use a previously edited value
 read -p ":" meininput                       # text input
@@ -9,7 +9,10 @@ choose myfile "*.sh"                        # file list using alias 'choose'
 show $USERNAME                              # print value
 run  testscript.sh $meininput               # starts a script with dynamic pars
 #------------------------Preferences----------------------------------------
-edit menu-defaults.def                      # edit default values
-edit menu-$USERNAME.def                     # edit user values
-edit menu-alias.sh                          # edit aliases
+edit sishell-defaults.def                   # edit default values
+edit sishell-$USERNAME.def                  # edit user values
+edit sishell-alias.sh                       # edit aliases
+inrun command                               # run any command
+sysinfo                                     # system info
+ffind $meininput -365 sysinfo               # find and edit file like $meininput not older than containing text sysinfo
 exit 0                                      # quit
