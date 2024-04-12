@@ -43,6 +43,9 @@ EOF
 
 echo "starting: $0 $@"
 [ "$1" == "" ] || [ "$1" == "--help" ] && head -n 33 $0 && exit 1
+used_variables=$(sed -nE  's/.*\$\{*(\w+).*/\1/p' $0 | sort | uniq | tr '\n' ' ')
+echo "used variables are: $used_variables"
+# TODO: check if par is var: if [[ " $used_variables " == *" ${x} "* ]];
 echo -en "setting parameters: "; for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && echo $a; done;
 
 SELF=$(basename $0); SELF=${SELF%.*};

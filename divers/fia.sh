@@ -21,8 +21,8 @@
 # rg -g ".*-sources.jar" -ilz cover ~/.m2     # zip not supported in rg!!
 ##############################################################################
 
-[ "$1" == "--help" ] && head -n 20 $0 && exit 1
-echo -en "setting parameters: "; for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && echo $a; done;
+[ "$1" == "--help" ] && head -n 20 "$0" && exit 1
+echo -en "setting parameters: "; for a in "$@" ; do [[ "$a" == *"="* ]] && declare -gt "$a" && echo "$a"; done;
 
 DIRS=${1:-.}
 ARCHIVES=${ARCHIVES:-"*.*ar"}
@@ -36,7 +36,7 @@ flist=${FLIST:-.unzip-list.txt}
 if [ "$3" != "" ] && [[ "$3" != *"="* ]]; then
     [ -f $flist ] && rm -v $flist
 	echo "searching text $3 in archives in directory $DIRS"
-    for d in $DIRS; do for f in $(find $d -name $SEARCHER_EXT); do echo "$f" >> $flist; unzip -p $f | $SEARCHER $3 >> $flist; done; done; cat $flist | $FUZZY
+    for d in $DIRS; do for f in $(find $(eval echo -n $d) -name $SEARCHER_EXT); do echo "$f" >> $flist; unzip -p $f | $SEARCHER $3 >> $flist; done; done; cat $flist | $FUZZY
 elif [ ! -f $flist ]; then
     echo "searching archives in directory $DIRS"
     for d in $DIRS; do for f in $(find $d -name $ARCHIVES); do echo "$f" >> $flist; unzip -l $f >> $flist; done; done; cat $flist | $FUZZY
