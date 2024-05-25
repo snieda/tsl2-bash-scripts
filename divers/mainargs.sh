@@ -5,15 +5,33 @@
 #    if first arg is something like help (e.g.: --help)
 # 2. declare all key-value pairs, given as arguments (like myarg="some value")
 #
-# usage: source main-args.sh "$@"
+# usage: source mainargs.sh "$@"
 #
 # Example script:
 #   #!/bin/bash
 #   #this is my script
-#   myfirstvar={myfirstvar:-first}      #first looking at myfirstvar, if not defined, use "first" as default)
+#   myfirstvar={myfirstvar:-$1   }      #first looking at myfirstvar, if not defined, use first parameter)
 #   mysecondvar={mysecondvar:-second}   #first looking at mysecondvar, if not defined use "second"
 # Example call:
 #   myscript.sh myfirstar=third mysecondvar=nothing
+# Tip:
+#   if you need a dryrun, prefix your main command with $dryrun - the caller can give an "dryrun=echo "
+
+title=$(
+cat <<'EOF'
+               .__                                  
+  _____ _____  |__| ____ _____ _______  ____  ______
+ /     \\__  \ |  |/    \\__  \\_  __ \/ ___\/  ___/
+|  Y Y  \/ __ \|  |   |  \/ __ \|  | \/ /_/  >___ \ 
+|__|_|  (____  /__|___|  (____  /__|  \___  /____  >
+      \/     \/        \/     \/     /_____/     \/ 
+
+EOF
+)
+
+echo "starting: $0 $@"
+echo "$title"
+
 
 comment_line_count=$(sed '/./d;=;q' $0)
 [[ "$1" == *"help" ]] \
