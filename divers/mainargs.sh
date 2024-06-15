@@ -42,6 +42,10 @@ comment_line_count=$(sed '/./d;=;q' $0)
    && sed -rn 's/.*[$][{]([a-zA-Z0-9_]+):-(.*)[}]/\t\1=\t\t\t\2/p' $0 \
    && exit 1
 
+echo
+echo "declared variables:"
+sed -rn 's/.*[$][{]([a-zA-Z0-9_]+):-(.*)[}]/\t\1=\t\t\t\2/p' $0
+
 echo "-------------------------------------------------------------------------------"
 echo -en "setting variables... "; for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && shift && echo $a; done; printf "\n"
 echo "-------------------------------------------------------------------------------"
