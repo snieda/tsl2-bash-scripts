@@ -1,12 +1,13 @@
 #!/bin/bash
 ##############################################################################
-# Simple Interactive Shell - provides a simple menu (cp Thomas Schneider 2020)
+# Simple Interactive Selective Shell
+#        provides a simple menu (cp Thomas Schneider 2020-2025)
 #
-# usage: sishell <name> [file-name or wildcard] [-s] [subst=true] [BANNER=<banner>]
+# usage: sishell <name> [file-name or wildcard] [-s <list>] [subst=true] [BANNER=<banner>]
 #             [EDITOR=<editor>] [before=<clear>] [log=true]
 # - name        : will be used as variable name and to read the file '$1.lst'
 # - file-or-glob: if wildcard, select from file-list, else menu file name
-# - -s          : simple list separated by spaces
+# - -s "..."    : simple list separated by spaces
 # - subst=true  : variables of your menu list file will be substituted
 # - BANNER=<banner>: use <banner> instead of figlet
 # - EDITOR=<editor>: use <editor> instead of vim
@@ -18,14 +19,14 @@
 #    - COMMAND as any shell command. e.g.: 'sishell' for recursion 
 #      'read' for input or 'echo' for printing result
 #      for complex/unreadable commands, define your own aliases or functions!
-#
+#    - DESCRIPTION starting with the character '#' any comment for the comment
 # - examples:
 #    - sishell myfile         # will read file myfile.lst as list
 #    - sishell myfile xyz.sh  # used variable myfile and read list from xyz.sh
 #    - sishell myfile "*.txt" # select a file from *.txt, result is in $myfile
 #
 # you may use the folowing convenience methods in your menu list file:
-#    editor, choose, edit, show, run
+#    run, input, inrun, choose, edit, ffind, show, sysinfo
 # NOTE: 
 #    - if figlet is installed, an ascii title will be printed
 #    - if the file 'sishell-alias.sh' was found it will be loaded
@@ -42,7 +43,8 @@ title=<<EOF
 EOF
 
 echo "starting: $0 $@"
-[ "$1" == "" ] || [ "$1" == "--help" ] && head -n 33 $0 && exit 1
+[ "$1" == "" ] || [ "$1" == "--help" ] && head -n 35 $0 && exit 1
+read rows cols < <(stty size) # TODO: use terminal size
 used_variables=$(sed -nE  's/.*\$\{*(\w+).*/\1/p' $0 | sort | uniq | tr '\n' ' ')
 echo "used variables are: $used_variables"
 # TODO: check if par is var: if [[ " $used_variables " == *" ${x} "* ]];
@@ -62,6 +64,12 @@ sysinfo() { uname -a; id; free; df -TPh; ifconfig; ipconfig; lscpu; lsblk; lshw 
 
 bar__() { for i in {1..26}; do printf "%s" $1; done; }
 printbar() { printf "$C_FRM<"; bar__ "-"; printf "|%14s%-14s|" $1 $2; bar__ "-"; printf ">%s$R" $'\n'; }
+initcolors() {
+	E0="\x1b[00;" E1="\x1b[01;" I=30
+	COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
+	for c in $COLORS; do I="$(($I+1))"; declare -gx $c="$E0$I""m"; declare -gx "L$c"="$E0$I""m"; echo "L$c=$E1$I""m"; done;
+	export C_FRM=$LBLUE; export C_CMD=$LCYAN; export C_PAR=$LGREEN; export C_CMT=$LRED; export RESTORE='\x1b[0m'; export R=$RESTORE
+}
 setcolors() { echo "$1" | sed -nEe "s/(\w+|[#-]+)(.*)(([#]|[-]{2}).*)/$C_CMD\1$C_PAR\2$C_CMT\3$R/p"; }
 
 create_env() {
@@ -74,6 +82,7 @@ create_env() {
 		cp $(dirname $0)/$SELF-*.def $ENV_DIR
 		cp $(dirname $0)/$SELF-*.lst $ENV_DIR
 	fi
+	[ -e $SELF-alias.sh ] && source $SELF-alias.sh
 	[ -e $ENV_DIR/$SELF-alias.sh ] && source $ENV_DIR/$SELF-alias.sh
 	[ -e $ENV_DIR/$SELF-defaults.def ] && source $ENV_DIR/$SELF-defaults.def
 	[ -e $ENV_DIR/$SELF-$USERNAME.def ] && source $ENV_DIR/$SELF-$USERNAME.def
@@ -82,6 +91,7 @@ create_env() {
 
 menu_main() { 
 	NAME=$1
+	PAGE=${2:-1}
 	IFS_=$IFS
 
 	case $2 in 
@@ -91,16 +101,17 @@ menu_main() {
 	esac
 	[ "$subst" == "true" ] && LIST=$(printf "$LIST" | envsubst "$(set -o posix; set)")
 	[ "$2" != "-s" ] && [ "$3" != "-s" ] && [[ "$2" != *"*"* ]] && RUNLINE="true" && IFS=$'\n' && LIST=$(setcolors "$LIST") || RUNLINE="false"
-	PS3="$(printbar "PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
+	PS3="$(printbar " PAGE $PAGE - PLEASE SELECT" " 1..$(echo "$LIST" | wc -l)") "$'\n'": "
 
 	BANNER=${BANNER:-figlet}
 	ascii_banner_installed=$(which $BANNER) # on cygwin, 'which' prints always the path
 	eval "${before:-clear}"
 	echo -en $LYELLOW
-	if [ "$ascii_banner_installed" != "" ]; then $BANNER "$NAME"; else head -n 41 $0 | tail -n 6; fi
-	printbar "PLEASE SELECT" " $NAME"
+	if [ "$ascii_banner_installed" != "" ]; then $BANNER "$NAME"; else head -n 42 $0 | tail -n 6; fi
+	printbar " PAGE $PAGE - PLEASE SELECT" " $NAME"
 	select i in $LIST ; do 
 		[ "$i" == "" ] || [ "$i" == "0" ] && break
+		PAGE=$(($PAGE+1))
 		IFS=$IFS_
 		CMD=${i%#*}
 		CMD=$(echo "$CMD" | sed 's/\x1b\[[0-9;]*m//g')
@@ -112,5 +123,6 @@ menu_main() {
 	printbar "$NAME: " "$CMD"
 }
 
+initcolors
 create_env $1
-menu_main "$@"
+menu_main "$@" "$PAGE"
