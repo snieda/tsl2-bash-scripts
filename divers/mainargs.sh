@@ -1,9 +1,10 @@
-# MAIN-ARGS by Thomas Schneider / 2024
+# MAIN-ARGS cr by Thomas Schneider / 2024
 #
 # main-args should be called on start of your shell script to do the following:
 # 1. print a help screen with documentation at header and all defined variables,
 #    if first arg is something like help (e.g.: --help)
-# 2. declare all key-value pairs, given as arguments (like myarg="some value")
+# 2. collect all options having no '='' to OPTARGS, given as arguments (like -myoption +myoption2")
+# 3. declare all key-value pairs, given as arguments (like myarg="some value")
 #
 # usage: source mainargs.sh "$@"
 #
@@ -46,7 +47,12 @@ echo
 echo "declared variables:"
 sed -rn 's/.*[$][{]([a-zA-Z0-9_]+):-(.*)[}]/\t\1=\t\t\t\2/p' $0
 
+OPTARGS=""
 echo "-------------------------------------------------------------------------------"
-echo -en "setting variables... "; for a in "$*" ; do [[ "$a" == *"="* ]] && declare -gt $a && shift && echo $a; done; printf "\n"
+echo -en "setting options... "; for a in "$@" ; do [[ "$a" != *"="* ]] && OPTARGS="$OPTARGS $a" && shift && echo " $a"; done; printf "\n"
 echo "-------------------------------------------------------------------------------"
+echo "OPTARGS: \"$OPTARGS\""
 
+echo "-------------------------------------------------------------------------------"
+echo -en "setting variables... "; for a in "$@" ; do [[ "$a" == *"="* ]] && declare -gt $a && shift && echo $a; done; printf "\n"
+echo "-------------------------------------------------------------------------------"

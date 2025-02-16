@@ -1,7 +1,7 @@
 #!/bin/bash
 ##############################################################################
 # Simple Interactive Selective Shell
-#        provides a simple menu (cp Thomas Schneider 2020-2025)
+#        provides a simple menu (cr Thomas Schneider 2020-2025)
 #
 # usage: sishell <name> [file-name or wildcard] [-s <list>] [subst=true] [BANNER=<banner>]
 #             [EDITOR=<editor>] [before=<clear>] [log=true]
