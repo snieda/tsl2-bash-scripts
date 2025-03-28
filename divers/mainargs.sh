@@ -44,11 +44,8 @@ EOF
 )
 
 # convenience variables, aliases and methods for styling
-E0="\x1b[00;"
-E1="\x1b[01;"
-I=30
-bold=$(tput bold)
-normal=$(tput sgr0)
+E0="\x1b[00;"; E1="\x1b[01;"; I=30
+bold=$(tput bold); normal=$(tput sgr0)
 
 COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
 for c in $COLORS; do I="$(($I+1))"; declare -x $c="$E0$I""m"; declare -x "L$c"="$E0$I""m"; done;
