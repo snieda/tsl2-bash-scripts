@@ -47,13 +47,16 @@ EOF
 E0="\x1b[00;"
 E1="\x1b[01;"
 I=30
+bold=$(tput bold)
+normal=$(tput sgr0)
 
 COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
 for c in $COLORS; do I="$(($I+1))"; declare -x $c="$E0$I""m"; declare -x "L$c"="$E0$I""m"; done;
 export R='\x1b[0m'
 
-echo "starting: $0 $@"
-echo -en "$LYELLOW$title$R\n"
+echo -en "starting: ${bold}$0 $@ $LYELLOW$bold\n"
+echo "$title"
+echo -en "$R"
 
 comment_line_count=$(sed '/./d;=;q' $0)
 if [[ "$1" == *"help" ]]; then \
