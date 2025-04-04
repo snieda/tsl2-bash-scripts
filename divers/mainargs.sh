@@ -1,3 +1,4 @@
+#!/bin/bash
 # MAIN-ARGS cr by Thomas Schneider / 2024
 #
 # main-args should be called on start of your shell script to do the following:
@@ -6,8 +7,16 @@
 # 2. read arguments from file (default: scriptname + '.args') given by first arg '_args=<filename>'
 # 3. collect all options having no '='' to OPTARGS, given as arguments (like -myoption +myoption2")
 # 4. declare all key-value pairs, given as arguments (like myarg="some value")
+# 5. extended use with $1 as '_argsfolder': loop over all files in _argsfolder and call $2 (returns with 2)
+#    the _argsfolder value MUST HAVE a globstar! (activate globstars with: shopt -s globstar) 
+#    usage: <executable-script> _argsfolder=<folder-containing-arg-files-with-globstar> <another-executable-script>
 #
-# usage: source mainargs.sh "$@" || exit 1
+# usage:
+#   source mainargs.sh [--help|"$@"|_args=<argsfile>|_argsfolder=<folder+filefilter> <script-or-command>] || exit 1
+# examples-usages: 
+#   source mainargs.sh "$@" || exit 1
+#   . mainargs.sh _args=".myargs"      # read arguments through file .myargs (default: .args)
+#   . mainargs.sh _argsfolder="**/arguments/*.args"
 #
 # Example script:
 #   #!/bin/bash
@@ -51,7 +60,8 @@ COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
 for c in $COLORS; do I="$(($I+1))"; declare -x $c="$E0$I""m"; declare -x "L$c"="$E0$I""m"; done;
 export R='\x1b[0m'
 
-echo -en "starting: ${bold}$0 $@ $LYELLOW$bold\n"
+PARENT_COMMAND=$(ps -o comm= $PPID)
+echo -en "\nstarting: ${bold}$0 $@ $LYELLOW$bold(parent: $PARENT_COMMAND)\n"
 echo "$title"
 echo -en "$R"
 
@@ -65,10 +75,19 @@ if [[ "$1" == *"help" ]]; then \
    && return 1 2> /dev/null || exit 1
 fi
 
+# run the given callback ($2) with args given by filenames in folder through $1 as '_argsfolder'
+if [[ "$1" == "_argsfolder="* ]]; then
+      echo -en "\n$LCYAN$bold>>STARTING LOOP $callback through arguments in FOLDER $argsfolder<<$R\n"
+      argsfolder=${1:12}
+      callback=$2
+      for f in $(ls $argsfolder); do echo "  => $callback \"_args=$f\"" ; $callback "_args=$f"; done
+      return 2;
+fi
+
 echo "-------------------------------------------------------------------------------"
-[[ "$1" == *"_args="* ]] && args_file=${1:6} || args_file="$1.args"
+[[ "$1" == "_args="* ]] && args_file=${1:6} || args_file=".args"
 printf "\nreading args from file \"$args_file\"\n"
-while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" == *"="* ]] && declare -gt $a && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
+while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" != "#"* ]] && [[ "$a" == *"="* ]] && declare -gt $a && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
 echo "-------------------------------------------------------------------------------"
 
 echo
