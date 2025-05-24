@@ -5,7 +5,7 @@
 # 1. print a help screen with documentation at header and all defined variables,
 #    if first arg is something like help (e.g.: --help)
 # 2. read arguments from file (default: scriptname + '.args') given by first arg '_args=<filename>'
-# 3. collect all options having no '='' to OPTARGS, given as arguments (like -myoption +myoption2")
+# 3. collect all options having no '='' to OPTARGS (and the array ARGS), given as arguments (like -myoption +myoption2")
 # 4. declare all key-value pairs, given as arguments (like myarg="some value")
 # 5. extended use with $1 as '_argsfolder': loop over all files in _argsfolder and call $2 (returns with 2)
 #    the _argsfolder value MUST HAVE a globstar! (activate globstars with: shopt -s globstar) 
@@ -26,7 +26,9 @@
 # Example call:
 #   myscript.sh myfirstar=third mysecondvar=nothing
 # Tip:
-#   if you need a dryrun, prefix your main command with $dryrun - the caller can give an "dryrun=echo "
+#  - if you need a dryrun, prefix your main command with $dryrun - the caller can give an "dryrun=echo "
+#  - you can use the OPTARGS string, holding all options in one string - or ARGS as array
+#  - you can set the run arguments again with: ARGS0=( $OPTARGS ); set -- $ARGS0
 #
 # generic way to include source script through BASH_SOURCE:
 # ---------------------------------------------------------
@@ -87,16 +89,28 @@ fi
 echo "-------------------------------------------------------------------------------"
 [[ "$1" == "_args="* ]] && args_file=${1:6} || args_file=".args"
 printf "\nreading args from file \"$args_file\"\n"
-while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" != "#"* ]] && [[ "$a" == *"="* ]] && declare -gt $a && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
+FILEARGS=()
+while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" != "#"* ]] && [[ "$a" == *"="* ]] && a=$(eval echo "$a") && FILEARGS+=$a && declare -gt $a && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
 echo "-------------------------------------------------------------------------------"
+
+echo
+echo "searching for nested variables..."
+for a in $FILEARGS ; do
+      while [[ $a == *"$"* ]]; do
+            a=$(eval echo "$a")
+            declare -gt $a
+            echo -en "nested -> $LGREEN$a$R\n"            
+      done
+done
 
 echo
 echo "declared variables:"
 sed -rn 's/.*[$][{]([a-zA-Z0-9_]+):-(.*)[}]/\t\1=\t\t\t\2/p' $0
 
 OPTARGS=""
+ARGS=()
 echo "-------------------------------------------------------------------------------"
-echo -en "setting options... "; for a in "$@" ; do [[ "$a" != *"="* ]] && OPTARGS="$OPTARGS $a" && shift && echo " $a"; done; printf "\n"
+echo -en "setting options... "; for a in "$@" ; do [[ "$a" != *"="* ]] && OPTARGS="$OPTARGS $a" && ARGS+=($a) && shift && echo " $a"; done; printf "\n"
 echo "-------------------------------------------------------------------------------"
 echo -en "OPTARGS: \"$LGREEN$OPTARGS$R\"\n"
 

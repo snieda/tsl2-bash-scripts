@@ -9,13 +9,14 @@
 #
 # Beispiel:
 #   watch -db -n 300 ./checkurl.sh 2020-09-05
+# NOTE: fuer Sound mit 'play' bitte 'pkg install sox' installieren
 ##############################################################################
 
 [ "$1" == "--help" ] && head -n 12 "$0" && exit 1
 
 DATE=${1:-$(date --iso-8601)}
 FILE="checkurl-response.html"
-URL=${2:-"https://ssl.forumedia.eu/zhs-courtbuchung.de/reservations.php?action=showRevervations&type_id=1&date=$DATE&page="}
+URL=${2:-"https://zhs-courtbuchung.de/reservations.php?action=showRevervations&type_id=1&date=$DATE&page="}
 PAGES=(1 2 3 4)
 SEARCH=${3:-'.*avaliable-cell-([2-9]|[0-9]{2}).*1[7-9][:][03]{2} [-].*'}
 OPTS="--silent"
@@ -29,7 +30,7 @@ check() {
 	sed -nEe "s/[<]title.*[>](.*).*/\\1/p" "$2"
 	echo
 	grep -E "$4" "$2"
-	[ $? == 0 ] && echo -ne '\007' && echo "---------------> PLATZ GEFUNDEN !!!!"
+	[ $? == 0 ] && play -q -n synth 0.1 sin 880; echo -ne '\007' && echo "---------------> PLATZ GEFUNDEN !!!!"
 }
 export -f check
 # does not work: watch -n 120 check
