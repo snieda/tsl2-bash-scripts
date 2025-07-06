@@ -34,6 +34,5 @@ RESULT=$?
   && echo -en "$LGREEN$bold$RESULT_VALUE$R"
   && echo "$RESULT_VALUE" > $0-result.txt
 
-echo
-[[  $RESULT != 0 ]] && echo -en "$LRED FAILED ($RESULT)!" && exit 1
+[[  $RESULT != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
  
