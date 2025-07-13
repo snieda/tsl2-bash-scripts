@@ -16,7 +16,7 @@
 #           --help: prints this help and stop
 #           --reset: reset all variables
 #
-# fields:   <name or regex>[:<str|num|lbl|flt>]
+# fields:   <name or regex>[§<str|num|lbl|flt>]
 #           field names seperated by spaces. on default, the name string will 
 #           be enrichted with a regex for key/value pair in json format.
 #           :str (default) enrich as json key/value regex for a string
@@ -27,9 +27,11 @@
 #           if you change the http method to e.g. POST, you can give an addtional
 #           'body' argument
 # examples:
-#           - reqs.sh csvfile=mycsvfile.csv colnr=2 fields="id name"
+#           - reqs.sh csvfile=mycsvfile.csv colnr=2 fields="id§num name"
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
+#           - reqs.sh _args=.args-reqs
+#           - reqs.sh _args=.args-reqs dryrun=echo
 ##############################################################################
 
   SRC_FILE=mainargs.sh
@@ -59,16 +61,19 @@ csvsep=${csvsep:-"\t"}
 fields=${fields:-"id name"}
 fieldsep=${fieldsep:-"[:]"}
 sequence="$(seq 4)"
+date=${date:-$(date --iso-8601)}
+skip_headers=${skip_headers:-1}
+dryrun=${dryrun:-curl}
 
 echo -en "$LBLUE\n"
-declare -p csvfile csvsep colnr outputfile method accept url user password body fields sequence
+declare -p csvfile csvsep colnr outputfile method accept url user password body fields fieldsep sequence
 echo -en "$R\n"
 
 expression=""
 replacement=""
 
 reset() {
-    unset csvfile csvsep colnr outputfile method accept url user password body fields sequence
+    unset csvfile csvsep colnr outputfile method accept url user password body fields fieldsep sequence
 }
 # field value is a string surrounded by double quotes
 # args: <field name>
@@ -96,16 +101,16 @@ createurl() {
     while [[ $url0 == *"$"* ]]; do
         url0=$(eval "echo $url0")
     done
-    echo $url0
+    echo " $url0"
 }
 
-# args: "space separated fields (default type: str, otherwise add ':num' or ':lbl' to field name)"
+# args: "space separated fields (default type: str, otherwise add '§num', '§lbl' or '§flt' to field name)"
 createexpression() {
     i=1
     for f in $1
     do
-        name=${f%:*}
-        func=${f#*:}
+        name=${f%§*}
+        func=${f#*§}
         [[ "$func" == "$name" ]] && func=str
         # echo "$func($name)"
         expression+="$($func $name).*"
@@ -118,13 +123,12 @@ createexpression() {
 # main routine
 
 [[ -f $0-fields.log ]] && rm $0-fields.log
-skip_headers=1
 if [[ "$csvfile" == "" ]]; then
     csvfile=$0-fields.log
     outputfile=$csvfile.extended.log
-    skip_headers=0
-
-    echo "$sequence" > $csvfile
+    skip_headers=1
+    echo "ID" > $csvfile
+    echo "$sequence" >> $csvfile
     echo -en "$LBLUE\nWARN: no csvfile given ==> using 'sequence' definition as content for default csvfile=$csvfile$R\n" 
 fi
 
@@ -140,13 +144,13 @@ do
     [[ $line == \#* ]] && continue
     arg=${line[colnr]}
     url_=$(createurl $url)
-    echo -en "=====> $LBLUE[$((i++)):$colnr]: ${header[$colnr]}=\"$arg\"$R ==> $LGREEN$url_$R\n"
+    echo -en "=====> $LBLUE[$((i++)):$colnr]: ${header[$colnr]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n"
     [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
 
-    curl -kL --trace-ascii "$csvfile.trace.log" --silent -X 'GET' \
-    "$url_" \
-    -d "$body" \
-    -u "$username:$password" \
+    $dryrun -kL --trace-ascii "$csvfile.trace.log"  -X $method \
+    $url_ \
+    $( [[ "$body" != "" ]] && echo "-d $body" || echo "") \
+    -u "$user:$password" \
     -H "accept: $accept" \
     | tee -a $csvfile.log \
     | tr '\n' '\f' \
