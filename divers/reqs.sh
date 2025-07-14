@@ -27,6 +27,7 @@
 #           if you change the http method to e.g. POST, you can give an addtional
 #           'body' argument
 # examples:
+#           - reqs.sh --help
 #           - reqs.sh csvfile=mycsvfile.csv colnr=2 fields="id§num name"
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
@@ -93,7 +94,7 @@ lbl() {
 # filter: similar to lbl, but will be replaced as by str and num
 # args: filter regex 
 flt() {
-    echo "\\\"$1\\\""
+    echo "$1"
 }
 
 createurl() {
@@ -124,8 +125,8 @@ createexpression() {
 
 [[ -f $0-fields.log ]] && rm $0-fields.log
 if [[ "$csvfile" == "" ]]; then
-    csvfile=$0-fields.log
-    outputfile=$csvfile.extended.log
+    csvfile=$0-sequence.log
+    outputfile=$csvfile.result.log
     skip_headers=1
     echo "ID" > $csvfile
     echo "$sequence" >> $csvfile
@@ -133,18 +134,19 @@ if [[ "$csvfile" == "" ]]; then
 fi
 
 regex=$(createexpression "$fields")
-echo -en "sed expression is: $LGREEN$regex$R\n"
+echo -en "\nsed expression is: $LGREEN$regex$R\n"
  
 [[ -f $outputfile ]] && rm $outputfile
 [[ -f $csvfile.log ]] && rm $csvfile.log
-i=1
+i=0
 while read -a line
 do
-    if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "$LGREEN${line[*]}$R\n"; continue; fi
+    if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "\nHEADER: $LGREEN${line[*]}$R\n"; continue; fi
     [[ $line == \#* ]] && continue
     arg=${line[colnr]}
     url_=$(createurl $url)
-    echo -en "=====> $LBLUE[$((i++)):$colnr]: ${header[$colnr]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n"
+    i=$((i+1))
+    echo -en "\n=====> $LBLUE[$i:$colnr]: ${header[$colnr]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n" | tee -a $csvfile.log
     [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
 
     $dryrun -kL --trace-ascii "$csvfile.trace.log"  -X $method \
@@ -154,12 +156,14 @@ do
     -H "accept: $accept" \
     | tee -a $csvfile.log \
     | tr '\n' '\f' \
-    | sed  -z -E -e "$regex" | tee -a $outputfile
+    | sed  -n -z -E -e "$regex" | tee -a $outputfile
     
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile
 
 [[ -f $outputfile ]] && [[ "$(cat $outputfile)" != "" ]] \
-    && echo -en "$LGREEN\nSUCCESS (result saved in $outputfile)$R\n" \
+    && echo -en "$LGREEN\n=============================================================================" \
+    && echo -en         "\nSUCCESS (iterations: $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
+    && echo -en "$LGREEN\n=============================================================================$R\n" \
     && echo -en "\b" \
     || echo -en "$LRED\nFAILED (nothing found)$R\n"; [[ "$_" != "$0" ]] && return 1 2>>/dev/null || exit 1
