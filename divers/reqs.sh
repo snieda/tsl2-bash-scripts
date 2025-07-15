@@ -3,7 +3,7 @@
 # (cr) Thomas Schneider 2025
 #
 # usage: reqs.sh [OPTIONS]
-#           [[csvfile=<csv file name>] [colnr=<column number in csvfile] [csvsep=<seperator in csvfile (default: '\t')]] 
+#           [[csvfile=<csv file name>] [csvcol=<column number in csvfile] [csvsep=<seperator in csvfile (default: '\t')]] 
 #         | [sequence=<sequence to be used instead of csvfile>]
 #           [fields=<response field names to show or simple a regex filter>]
 #           [fieldsep=<field seperation in response (default: ':')>]
@@ -28,7 +28,7 @@
 #           'body' argument
 # examples:
 #           - reqs.sh --help
-#           - reqs.sh csvfile=mycsvfile.csv colnr=2 fields="id§num name"
+#           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name"
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
 #           - reqs.sh _args=.args-reqs
@@ -38,11 +38,11 @@
   SRC_FILE=mainargs.sh
   DIR="${BASH_SOURCE%/*}"
   if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
-  if [[ ! -f "$DIR/$SRC_FILE"  && ! -f "~/.local/bin/$SRC_FILE" ]]; then
-      [[ -d "~/.local/bin" ]] && BINDIR="~/.local/bin/"
+  if [[ ! -f "$DIR/$SRC_FILE"  && ! -f ~/.local/bin/"$SRC_FILE" ]]; then
+      [[ -d ~/.local/bin ]] && BINDIR=~/.local/bin/
       curl -kL https://github.com/snieda/tsl2-bash-scripts/raw/refs/heads/master/divers/mainargs.sh -o $BINDIR$SRC_FILE && chmod +x $BINDIR$SRC_FILE
   fi
-  . mainargs.sh || . $DIR/mainargs.sh 
+  . ./mainargs.sh || . $DIR/mainargs.sh || . mainargs.sh
   #|| [[ "$_" != "$0" ]] && return 1 2>> /dev/null || exit 1
 
 ##############################################################################
@@ -53,7 +53,7 @@
 csvfile=${csvfile:-$1}
 [[ "$csvfile" != "" ]] && [[ ! -f "$csvfile" ]] && echo -en "$LRED\nFAILED (nothing to do!)$R\n"; [[ "$_" != "$0" ]] && (return 1 2>>/dev/null || exit 1)
 outputfile="$csvfile.extended.csv"
-colnr=${colnr:-0}
+csvcol=${csvcol:-0}
 
 method=${method:-GET}
 accept=${accept:-"application/json"}
@@ -65,16 +65,19 @@ sequence="$(seq 4)"
 date=${date:-$(date --iso-8601)}
 skip_headers=${skip_headers:-1}
 dryrun=${dryrun:-curl}
+user=${user:-""}
+password=${password:-""}
+body=${body:-""}
 
 echo -en "$LBLUE\n"
-declare -p csvfile csvsep colnr outputfile method accept url user password body fields fieldsep sequence
+declare -p csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 echo -en "$R\n"
 
 expression=""
 replacement=""
 
 reset() {
-    unset csvfile csvsep colnr outputfile method accept url user password body fields fieldsep sequence
+    unset csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 }
 # field value is a string surrounded by double quotes
 # args: <field name>
@@ -123,9 +126,12 @@ createexpression() {
 ##############################################################################
 # main routine
 
-[[ -f $0-fields.log ]] && rm $0-fields.log
 if [[ "$csvfile" == "" ]]; then
-    csvfile=$0-sequence.log
+    if [[ \"$0\" == *\"/usr/bin/\"* ]]; then
+        csvfile="reqs.sequence.log"
+    else
+        csvfile=$0.sequence.log
+    fi
     outputfile=$csvfile.result.log
     skip_headers=1
     echo "ID" > $csvfile
@@ -135,7 +141,8 @@ fi
 
 regex=$(createexpression "$fields")
 echo -en "\nsed expression is: $LGREEN$regex$R\n"
- 
+[[ ! $(sed -n -z -E -e "$regex" </dev/null) ]] && return 1
+
 [[ -f $outputfile ]] && rm $outputfile
 [[ -f $csvfile.log ]] && rm $csvfile.log
 i=0
@@ -143,10 +150,10 @@ while read -a line
 do
     if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "\nHEADER: $LGREEN${line[*]}$R\n"; continue; fi
     [[ $line == \#* ]] && continue
-    arg=${line[colnr]}
+    arg=${line[csvcol]}
     url_=$(createurl $url)
     i=$((i+1))
-    echo -en "\n=====> $LBLUE[$i:$colnr]: ${header[$colnr]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n" | tee -a $csvfile.log
+    echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n" | tee -a $csvfile.log
     [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
 
     $dryrun -kL --trace-ascii "$csvfile.trace.log"  -X $method \
@@ -163,7 +170,7 @@ done < $csvfile
 
 [[ -f $outputfile ]] && [[ "$(cat $outputfile)" != "" ]] \
     && echo -en "$LGREEN\n=============================================================================" \
-    && echo -en         "\nSUCCESS (iterations: $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
+    && echo -en         "\nSUCCESS (findings: $(wc -l < $outputfile) / $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
     && echo -en "$LGREEN\n=============================================================================$R\n" \
     && echo -en "\b" \
     || echo -en "$LRED\nFAILED (nothing found)$R\n"; [[ "$_" != "$0" ]] && return 1 2>>/dev/null || exit 1

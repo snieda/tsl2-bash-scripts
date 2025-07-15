@@ -1,5 +1,5 @@
 #!/bin/bash
-# MAIN-ARGS cr by Thomas Schneider / 2024
+# MAIN-ARGS (cr) by Thomas Schneider / 2024
 #
 # main-args should be called on start of your shell script to do the following:
 # 1. print a help screen with documentation at header and all defined variables,
@@ -39,7 +39,7 @@
 #       [[ -d "~/.local/bin" ]] && BINDIR="~/.local/bin/"
 #       curl -kL https://github.com/snieda/tsl2-bash-scripts/raw/refs/heads/master/divers/mainargs.sh -o $BINDIR$SRC_FILE && chmod +x $BINDIR$SRC_FILE
 #   fi
-#   . $DIR/mainargs.sh || . mainargs.sh
+#   . ./mainargs.sh || . $DIR/mainargs.sh || . mainargs.sh
 # ---------------------------------------------------------
 
 title=$(
@@ -63,7 +63,10 @@ for c in $COLORS; do I="$(($I+1))"; declare -x $c="$E0$I""m"; declare -x "L$c"="
 export R='\x1b[0m'
 
 PARENT_COMMAND=$(ps -o comm= $PPID)
-echo -en "\nstarting: ${bold}$0 $@ $LYELLOW$bold(parent: $PARENT_COMMAND)\n"
+echo -en "$LYELLOW$bold"
+echo -en "\nstarting: $_ $0 $@ (bash_source: $BASH_SOURCE, parent: $PARENT_COMMAND)"
+echo -en "\n    time: $(date --iso-8601=seconds)"
+echo -en "\n  folder: $(pwd)\n"
 echo "$title"
 echo -en "$R"
 
@@ -74,12 +77,12 @@ if [[ "$1" == *"help" ]]; then \
    && echo "usage: $0 [[--]help] | [variable overriding arguments...]" \
    && printf "\nfollowing variables can be overridden and given as arguments:\n" \
    && sed -rn 's/.*[$][{]([a-zA-Z0-9_]+):-(.*)[}]/\t\1=\t\t\t\2/p' $0 \
-   && return 1 2> /dev/null || exit 1
+   && [[ "$BASH_SOURCE" != "$0" ]] && return 1 2> /dev/null || exit 1
 fi
 
 # run the given callback ($2) with args given by filenames in folder through $1 as '_argsfolder'
 if [[ "$1" == "_argsfolder="* ]]; then
-      echo -en "\n$LCYAN$bold>>STARTING LOOP $callback through arguments in FOLDER $argsfolder<<$R\n"
+      echo -en "\n$LCYAN$bold\>\>STARTING LOOP $callback through arguments in FOLDER $argsfolder\<<$R\n"
       argsfolder=${1:12}
       callback=$2
       for f in $(ls $argsfolder); do echo "  => $callback \"_args=$f\"" ; $callback "_args=$f"; done
@@ -90,7 +93,7 @@ echo "--------------------------------------------------------------------------
 [[ "$1" == "_args="* ]] && args_file=${1:6} || args_file=".args"
 printf "\nreading args from file \"$args_file\"\n"
 FILEARGS=()
-while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" != "#"* ]] && [[ "$a" == *"="* ]] && a=$(eval echo "$a") && FILEARGS+=$a && declare -gt $a && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
+while IFS='' read -r a || [[ -n "$a" ]]; do [[ "$a" != "#"* ]] && [[ "$a" == *"="* ]] && a=$(eval echo "$a") && FILEARGS+="$a" && declare -gt "$a" && echo -en "$LBLUE$a$R\n"; done < "$args_file"; printf "\n"
 echo "-------------------------------------------------------------------------------"
 
 echo
@@ -98,7 +101,7 @@ echo "searching for nested variables..."
 for a in $FILEARGS ; do
       while [[ $a == *"$"* ]]; do
             a=$(eval echo "$a")
-            declare -gt $a
+            declare -gt "$a"
             echo -en "nested -> $LGREEN$a$R\n"            
       done
 done
@@ -115,5 +118,5 @@ echo "--------------------------------------------------------------------------
 echo -en "OPTARGS: \"$LGREEN$OPTARGS$R\"\n"
 
 echo "-------------------------------------------------------------------------------"
-echo -en "setting variables... "; for a in "$@" ; do [[ "$a" == *"="* ]] && declare -gt $a && shift && echo -en "$LGREEN$a$R "; done; printf "\n"
+echo -en "setting variables... "; for a in "$@" ; do [[ "$a" == *"="* ]] && declare -gt "$a" && shift && echo -en "$LGREEN$a$R "; done; printf "\n"
 echo "-------------------------------------------------------------------------------"

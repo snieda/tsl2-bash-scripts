@@ -1,5 +1,5 @@
 url='https://zhs-courtbuchung.de/reservations.php?action=showRevervations\&type_id=1\&date=$date\&page=$arg'
-fields=avaliable-cell-([2-9]|[0-9]{2})§flt (1[7-9][:][03]{2})\s[-]§flt
+fields='avaliable-cell-([2-9]|[0-9]{2})(1[7-9][:][03]{2})\s[-]'§flt
 fieldsep=[=]
 sequence="$(seq 2 4)"
 date=$(date --iso-8601)
