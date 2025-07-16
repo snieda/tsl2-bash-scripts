@@ -16,10 +16,13 @@
 #           --help: prints this help and stop
 #           --reset: reset all variables
 #
-# fields:   <name or regex>[§<str|num|lbl|flt>]
+# fields:   <name or regex>[§<str|opt|num|lbl|flt>]
+#           if fields starts with 's/' the fields itself will be used as full
+#           sed expression like s/<match>/replace/p 
 #           field names seperated by spaces. on default, the name string will 
 #           be enrichted with a regex for key/value pair in json format.
 #           :str (default) enrich as json key/value regex for a string
+#           :opt enrich as json key/value regex for an optional string
 #           :num enrich as json key/value regex for a number
 #           :lbl no enrichment. only positional expression for the regex
 #           :flt no enrichment. simple regex filter
@@ -28,11 +31,11 @@
 #           'body' argument
 # examples:
 #           - reqs.sh --help
-#           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name"
+#           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name vorname§opt"
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
 #           - reqs.sh _args=.args-reqs
-#           - reqs.sh _args=.args-reqs dryrun=echo
+#           - reqs.sh _args=.args-reqs runner=echo
 ##############################################################################
 
   SRC_FILE=mainargs.sh
@@ -52,7 +55,7 @@
 
 csvfile=${csvfile:-$1}
 [[ "$csvfile" != "" ]] && [[ ! -f "$csvfile" ]] && echo -en "$LRED\nFAILED (nothing to do!)$R\n"; [[ "$_" != "$0" ]] && (return 1 2>>/dev/null || exit 1)
-outputfile="$csvfile.extended.csv"
+outputfile="$csvfile.result.csv"
 csvcol=${csvcol:-0}
 
 method=${method:-GET}
@@ -64,25 +67,29 @@ fieldsep=${fieldsep:-"[:]"}
 sequence="$(seq 4)"
 date=${date:-$(date --iso-8601)}
 skip_headers=${skip_headers:-1}
-dryrun=${dryrun:-curl}
+runner=${runner:-curl}
+sedrunner=${sedrunner:-'sed -n -z -E -e'} # alternative: 'perl -0777 -pe'
 user=${user:-""}
 password=${password:-""}
 body=${body:-""}
 
 echo -en "$LBLUE\n"
-declare -p csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+declare -p runner sedrunner csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 echo -en "$R\n"
 
 expression=""
 replacement=""
 
 reset() {
-    unset csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+    unset runner sedrunner csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 }
 # field value is a string surrounded by double quotes
 # args: <field name>
 str() {
     echo "\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\""
+}
+opt() {
+    echo "(\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\")?"
 }
 # field value is a number not surrounded by double quotes
 # args: "field name"
@@ -99,6 +106,9 @@ lbl() {
 flt() {
     echo "$1"
 }
+opt() {
+    echo "(\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\")?"
+}
 
 createurl() {
     url0=$1
@@ -110,6 +120,10 @@ createurl() {
 
 # args: "space separated fields (default type: str, otherwise add '§num', '§lbl' or '§flt' to field name)"
 createexpression() {
+    if [[ "$1" == "s/"* ]]; then
+        echo "$1"
+        return 0;
+    fi
     i=1
     for f in $1
     do
@@ -118,6 +132,7 @@ createexpression() {
         [[ "$func" == "$name" ]] && func=str
         # echo "$func($name)"
         expression+="$($func $name).*"
+        [[ "$func" != "opt" ]] && ((i++))  # as sed is not able to use non-matching groups, we hop over
         [[ "$func" != "lbl" ]] && replacement+="\\$((i++))$csvsep"
     done
     echo "s/.*$expression/$replacement\\n/p"
@@ -141,12 +156,14 @@ fi
 
 regex=$(createexpression "$fields")
 echo -en "\nsed expression is: $LGREEN$regex$R\n"
-[[ ! $(sed -n -z -E -e "$regex" </dev/null) ]] && return 1
+[[ ! $($sedrunner "$regex" </dev/null) ]] && echo -en "${LRED}error in sed expression$R\n" && return 1
 
 [[ -f $outputfile ]] && rm $outputfile
 [[ -f $csvfile.log ]] && rm $csvfile.log
 i=0
-while read -a line
+echo -en "\n$LYELLOW$bold=========================================================================="
+echo -en "\nstarting iteration through $csvfile$R\n"
+while IFS=$csvsep read -a line
 do
     if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "\nHEADER: $LGREEN${line[*]}$R\n"; continue; fi
     [[ $line == \#* ]] && continue
@@ -156,14 +173,15 @@ do
     echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n" | tee -a $csvfile.log
     [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
 
-    $dryrun -kL --trace-ascii "$csvfile.trace.log"  -X $method \
+    $runner -kL --trace-ascii "$csvfile.trace.log"  -X $method \
     $url_ \
-    $( [[ "$body" != "" ]] && echo "-d $body" || echo "") \
+    -d "$body" \
     -u "$user:$password" \
+    -H "Authorization: Basic $authorization" \
     -H "accept: $accept" \
     | tee -a $csvfile.log \
     | tr '\n' '\f' \
-    | sed  -n -z -E -e "$regex" | tee -a $outputfile
+    | $sedrunner "$regex" | tee -a $outputfile
     
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile

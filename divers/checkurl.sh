@@ -26,13 +26,14 @@ URL=${2:-"https://zhs-courtbuchung.de/reservations.php?action=showRevervations'&
 FILTER='[<]title.*[>](.*).*'
 SEARCH=${3:-'.*avaliable-cell-([2-9]|[0-9]{2}).*1[7-9][:][03]{2} [-].*'}
 OPTS=${4:-"--silent"}
+PLAYSOUND=${PLAYSOUND:-'play -q -n synth 0.1 sin 880 ; echo -ne \007'}
 #SCHEDULER="watch -b -d -n 120 -x bash -c"
 
 check() {
 	echo "check on $DATE for loop $4 searching for: $5"
 	for VAR in $4; do $PRG "$6" $(eval echo "$1") ; done > $2
 	sed -nEe "s/$3/\\1/p" "$2" && echo && grep -E "$5" "$2"
-	[ $? == 0 ] && play -q -n synth 0.1 sin 880; echo -ne '\007' && echo "---------------> ENTRY FOUND !!!!"
+	[ $? == 0 ] && eval $PLAYSOUND && echo "---------------> ENTRY FOUND !!!!"
 }
 export -f check
 # does not work: watch -n 120 check
