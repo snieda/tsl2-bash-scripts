@@ -4,13 +4,14 @@
 #
 # usage genseq.sh name {outer-array-sequence[::inner-array-sequence]...}
 # with array-sequence:
-#   - dates from to step     # with start,end: date or 'today', step: dany, month, year
+#   - dates from to step     # with start,end: date or 'today' or [+][0-9]+, step: day, month, year
 #   - lines(filename)        # with reading lines of filename
-#   - seq{start,step,end}    # with all three numbers
+#   - seq{start,step,end}    # with all numbers between start and end
 #
 # examples:
 #   genseq.sh genseq-test.csv  "numbers 11 1 12" "dates 2025-01-01 2025-12-01 month"
 #   genseq.sh genseq-test.csv "lines test-lines.txt" "dates today 2025-07-25 day"  "numbers 1 1 4"  "numbers 1 1 4"
+#   genseq.sh genseq-test.csv "dates today +7 year"
 #
 ##############################################################################
 
@@ -21,6 +22,7 @@ dates() {
     [[ "$from" == "today" ]] && from=$(date -I)
     [[ "$until" == "today" ]] && until=$(date -I)
     [[ "$step" == "" ]] && step="day"
+    [[ "$until" =~ [+-][0-9]+ ]] && until=$(date -I -d "$from $until $step")
     cur=$from
     while read line; do
         cur=$from
