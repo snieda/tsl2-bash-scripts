@@ -1,5 +1,7 @@
 #!/bin/bash
-# calls and filters http services for each entry in an optionally given file or sequence
+# calls and filters http services for each entry in an optionally given file or sequence.
+# usable to generate data files - or to check sites/data for changes.
+# to check for changes, use it together with 'watch' and 'diff.'
 # (cr) Thomas Schneider 2025
 #
 # usage: reqs.sh [OPTIONS]
@@ -47,6 +49,7 @@
 #           - be careful with your $filter definition including shell vars:
 #             don't use spaces in your replacement expression to avoid a
 #             not ended sed expression (cutting on spaces)
+#           - to create/generate an input csvfile, use genseq.sh 
 ##############################################################################
 
   SRC_FILE=mainargs.sh

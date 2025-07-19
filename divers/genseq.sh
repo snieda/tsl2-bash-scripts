@@ -13,6 +13,8 @@
 #   genseq.sh genseq-test.csv "lines test-lines.txt" "dates today 2025-07-25 day"  "numbers 1 1 4"  "numbers 1 1 4"
 #   genseq.sh genseq-test.csv "dates today +7 year"
 #
+# notes:
+#   may be used together with reqs.sh
 ##############################################################################
 
 dates() {
