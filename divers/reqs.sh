@@ -13,8 +13,9 @@
 #           [body=<body, if your http method is POST>]
 #
 # OPTIONS:
-#           --help: prints this help and stop
-#           --reset: reset all variables
+#           --help  : prints this help and stop
+#           --reset : reset all variables
+#           --silent: reduce output
 #
 # fields:   <name or regex>[§<str|opt|num|lbl|flt>]
 #           if fields starts with 's/' the fields itself will be used as full
@@ -25,18 +26,27 @@
 #           :opt enrich as json key/value regex for an optional string
 #           :num enrich as json key/value regex for a number
 #           :lbl no enrichment. only positional expression for the regex
-#           :flt no enrichment. simple regex filter
+#           :flt no enrichment. simple regex filter , replacement may include shell vars
 # method:
 #           if you change the http method to e.g. POST, you can give an addtional
 #           'body' argument
 # examples:
 #           - reqs.sh --help
 #           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name vorname§opt"
-#           - reqs.sh url="xyz" fields='s/a/b/p'
+#           - reqs.sh url="xyz$arg" fields='s/a/b/p'
+#           - reqs.sh url="xyz${line[0]}" fields='s/a/${line[0]}b/p'
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
-#           - reqs.sh _args=.args-reqs
+#           - reqs.sh _args=.args-reqs --silent
 #           - reqs.sh _args=.args-reqs runner=echo
+#
+# note:
+#           - nested variables in $url or $field will be inserted! see examples
+#           - $csvcol defines the content of $arg. but you can directly use
+#             ${line[<number>]}
+#           - be careful with your $filter definition including shell vars:
+#             don't use spaces in your replacement expression to avoid a
+#             not ended sed expression (cutting on spaces)
 ##############################################################################
 
   SRC_FILE=mainargs.sh
@@ -108,12 +118,12 @@ flt() {
     echo "$1"
 }
 
-createurl() {
-    url0=$1
-    while [[ $url0 == *"$"* ]]; do
-        url0=$(eval "echo $url0")
+insertnestedvariables() {
+    a1=$1
+    while [[ $a1 == *"$"* ]]; do
+        a1=$(eval "echo \"$a1\"" )
     done
-    echo " $url0"
+    echo " $a1"
 }
 
 # args: "space separated fields (default type: str, otherwise add '§num', '§lbl' or '§flt' to field name)"
@@ -160,18 +170,20 @@ echo -en "\nsed expression is: $LGREEN$regex$R\n"
 [[ -f $csvfile.log ]] && rm $csvfile.log
 i=0
 echo -en "\n$LYELLOW$bold=========================================================================="
-echo -en "\nstarting iteration through $csvfile$R\n"
-while IFS=$csvsep read -a line
+echo -en "\nstarting iteration through $csvfile (output: $outputfile)$R\n"
+while read -a line
 do
     if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "\nHEADER: $LGREEN${line[*]}$R\n"; continue; fi
     [[ $line == \#* ]] && continue
     arg=${line[csvcol]}
-    url_=$(createurl $url)
+    url_=$(insertnestedvariables $url)
+    regex_=$(insertnestedvariables $regex)
     i=$((i+1))
-    echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_$R\n" | tee -a $csvfile.log
-    [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
-
-    $runner -kL --trace-ascii "$csvfile.trace.log"  -X $method \
+    if [[ ! $OPTARGS == *"--silent"* ]]; then
+        echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_\n\t\t\t\tRegEx: $regex_$R\n" | tee -a $csvfile.log
+        [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
+    fi
+    $runner -kL $(sed -n -E -e 's/(--silent)/\1/p' <<<$OPTARGS) --trace-ascii "$csvfile.trace.log"  -X $method \
     $url_ \
     -d "$body" \
     -u "$user:$password" \
@@ -179,15 +191,15 @@ do
     -H "accept: $accept" \
     | tee -a $csvfile.log \
     | tr '\n' '\f' \
-    | $sedrunner "$regex" | tee -a $outputfile
+    | $sedrunner "$regex_" | tee -a $outputfile
 #    | tee /dev/stderr   # does not work, perhaps with 'tee $(tty)'?
 #    | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile
 
 [[ -f $outputfile ]] && [[ "$(cat $outputfile)" != "" ]] \
-    && echo -en "\n\n===============================================================\n" \
-    && cat $outputfile \
+    && echo -en "\n\n=============================================================================n" \
+    && $(    if [[ ! $OPTARGS == *"--silent"* ]]; then cat $outputfile ; fi) \
     && echo -en "$LGREEN\n=============================================================================" \
     && echo -en         "\nSUCCESS (findings: $(wc -l < $outputfile) / $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
     && echo -en "$LGREEN\n=============================================================================$R\n" \

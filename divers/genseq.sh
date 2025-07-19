@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 # generates a csv file through a given column-array and seqences of type words, numbers and dates
 # (cr) Thomas Schneider
 #
@@ -53,4 +53,6 @@ sep='\t'
 # to have at least one line at start...
 echo " " > $outputfile
 
-for a in "$@" ; do echo $a; $a ; done
+for a in "$@" ; do echo "running $a ..."; $a ; done
+
+sed -i "1 i\# generated file through \"genseq.sh $@\"" $outputfile
