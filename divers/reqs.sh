@@ -124,7 +124,7 @@ flt() {
 insertnestedvariables() {
     a1=$1
     while [[ $a1 == *"$"* ]]; do
-        a1=$(eval "echo \"$a1\"" )
+        a1=$(eval "echo $a1" )
     done
     echo " $a1"
 }
@@ -167,7 +167,7 @@ fi
 
 regex=$(createexpression "$fields")
 echo -en "\nsed expression is: $LGREEN$regex$R\n"
-[[ ! $($sedrunner "$regex" </dev/null) ]] && echo -en "${LRED}error in sed expression$R\n" && return 1
+#[[ ! $($sedrunner "$regex" </dev/null) ]] && echo -en "${LRED}error in sed expression$R\n" && return 1
 
 [[ -f $outputfile ]] && rm $outputfile
 [[ -f $csvfile.log ]] && rm $csvfile.log
@@ -180,7 +180,7 @@ do
     [[ $line == \#* ]] && continue
     arg=${line[csvcol]}
     url_=$(insertnestedvariables $url)
-    regex_=$(insertnestedvariables $regex)
+    regex_=$(insertnestedvariables "\"$regex\"")
     i=$((i+1))
     if [[ ! $OPTARGS == *"--silent"* ]]; then
         echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_\n\t\t\t\tRegEx: $regex_$R\n" | tee -a $csvfile.log
@@ -201,10 +201,10 @@ do
 done < $csvfile
 
 [[ -f $outputfile ]] && [[ "$(cat $outputfile)" != "" ]] \
-    && echo -en "\n\n=============================================================================n" \
-    && $(    if [[ ! $OPTARGS == *"--silent"* ]]; then cat $outputfile ; fi) \
+    && echo -en "\n\n=============================================================================\n" \
+    && $( [[ ! "$OPTARGS" == *"--silent"* ]] && cat $outputfile >> /dev/stderr || echo >> /dev/stderr ) \
     && echo -en "$LGREEN\n=============================================================================" \
-    && echo -en         "\nSUCCESS (findings: $(wc -l < $outputfile) / $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
+    && echo -en        "\nSUCCESS (findings: $(wc -l < $outputfile) / $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
     && echo -en "$LGREEN\n=============================================================================$R\n" \
     && echo -en "\b" \
     || echo -en "$LRED\nFAILED (nothing found)$R\n"; [[ "$_" != "$0" ]] && return 1 2>>/dev/null || exit 1
