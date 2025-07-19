@@ -32,6 +32,7 @@
 # examples:
 #           - reqs.sh --help
 #           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name vorname§opt"
+#           - reqs.sh url="xyz" fields='s/a/b/p'
 #           - reqs.sh seperator="a b c d" fields="id"
 #           - reqs.sh --reset
 #           - reqs.sh _args=.args-reqs
@@ -86,28 +87,25 @@ reset() {
 # field value is a string surrounded by double quotes
 # args: <field name>
 str() {
-    echo "\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\""
+    echo "\\\"?$1\\\"?$fieldsep\s*\\\"?([^\\\"]*)\\\"?"
 }
 opt() {
-    echo "(\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\")?"
+    echo "(\\\"?$1\\\"?$fieldsep\s*\\\"?(\w+)\\\"?)?"
 }
 # field value is a number not surrounded by double quotes
 # args: "field name"
 num() {
-    echo "\\\"$1\\\"[$fieldsep]\s*([0-9]*)"
+    echo "\\\"?$1\\\"?$fieldsep\s*([0-9]*)"
 }
 # only field name will be matched, without grouping it for output
 # args: "field name"
 lbl() {
-    echo "\\\"$1\\\""
+    echo "\\\"?$1\\\"?"
 }
 # filter: similar to lbl, but will be replaced as by str and num
 # args: filter regex 
 flt() {
     echo "$1"
-}
-opt() {
-    echo "(\\\"$1\\\"$fieldsep\s*\\\"([^\\\"]*)\\\")?"
 }
 
 createurl() {
@@ -131,11 +129,11 @@ createexpression() {
         func=${f#*§}
         [[ "$func" == "$name" ]] && func=str
         # echo "$func($name)"
-        expression+="$($func $name).*"
-        [[ "$func" != "opt" ]] && ((i++))  # as sed is not able to use non-matching groups, we hop over
+        expression+="$($func $name).*?"
+        [[ "$func" == "opt" ]] && ((i++))  # as sed is not able to use non-matching groups, we hop over
         [[ "$func" != "lbl" ]] && replacement+="\\$((i++))$csvsep"
     done
-    echo "s/.*$expression/$replacement\\n/p"
+    echo "s/.*$expression/\\n$replacement/p"
 }
 
 ##############################################################################
@@ -182,11 +180,14 @@ do
     | tee -a $csvfile.log \
     | tr '\n' '\f' \
     | $sedrunner "$regex" | tee -a $outputfile
-    
+#    | tee /dev/stderr   # does not work, perhaps with 'tee $(tty)'?
+#    | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile
 
 [[ -f $outputfile ]] && [[ "$(cat $outputfile)" != "" ]] \
+    && echo -en "\n\n===============================================================\n" \
+    && cat $outputfile \
     && echo -en "$LGREEN\n=============================================================================" \
     && echo -en         "\nSUCCESS (findings: $(wc -l < $outputfile) / $i, $(date --iso-8601=seconds))\n\tresult saved in: $outputfile\n\tcurl output    : $csvfile\n\tcurl-trace     : $csvfile.trace.log" \
     && echo -en "$LGREEN\n=============================================================================$R\n" \
