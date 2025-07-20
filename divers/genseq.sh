@@ -58,3 +58,4 @@ echo " " > $outputfile
 for a in "$@" ; do echo "running $a ..."; $a ; done
 
 sed -i "1 i\# generated file through \"genseq.sh $@\"" $outputfile
+echo "generated file: $outputfile"

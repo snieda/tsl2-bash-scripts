@@ -32,6 +32,15 @@
 # method:
 #           if you change the http method to e.g. POST, you can give an addtional
 #           'body' argument
+# OTHER:
+#           there are some other fields (pointers to methods) to re-define. all of them
+#           must be able to get the stdin through a pipe. so you may use
+#               declare -i i=${1:-$(</dev/stdin)};
+#           as first function line.
+#           - runner: default 'curl'
+#           - sedrunner: default 'sed'
+#           - transformer: default tr '\n' '\f'
+#           - callback: default printonly, may be an addtional function call after runner
 # examples:
 #           - reqs.sh --help
 #           - reqs.sh csvfile=mycsvfile.csv csvcol=2 fields="id§num name vorname§opt"
@@ -43,7 +52,7 @@
 #           - reqs.sh _args=.args-reqs runner=echo
 #
 # note:
-#           - nested variables in $url or $field will be inserted! see examples
+#           - nested variables in $url or $field will be inserted! see examples.
 #           - $csvcol defines the content of $arg. but you can directly use
 #             ${line[<number>]}
 #           - be careful with your $filter definition including shell vars:
@@ -82,20 +91,29 @@ sequence="$(seq 4)"
 date=${date:-$(date --iso-8601)}
 skip_headers=${skip_headers:-1}
 runner=${runner:-curl}
-sedrunner=${sedrunner:-'sed -n -z -E -e'} # alternative: 'perl -0777 -pe'
+sedrunner=${sedrunner:-'sed -n -E -e'} # alternative: 'perl -0777 -pe'
+transformer=${transformer:-"tr '\n' '\f'"}
+callback="printonly"
 user=${user:-""}
 password=${password:-""}
 body=${body:-""}
 
 echo -en "$LBLUE\n"
-declare -p runner sedrunner csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+declare -p runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 echo -en "$R\n"
 
 expression=""
 replacement=""
 
+# helper function as default callback 
+printonly() {
+    #declare -i i=${1:-"$(</dev/stdin)"};
+    #echo "$args_: $1"
+    echo "$(</dev/stdin)"
+}
+
 reset() {
-    unset runner sedrunner csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+    unset runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 }
 # field value is a string surrounded by double quotes
 # args: <field name>
@@ -193,10 +211,9 @@ do
     -H "Authorization: Basic $authorization" \
     -H "accept: $accept" \
     | tee -a $csvfile.log \
-    | tr '\n' '\f' \
+    | $transformer \
     | $sedrunner "$regex_" | tee -a $outputfile
-#    | tee /dev/stderr   # does not work, perhaps with 'tee $(tty)'?
-#    | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
+    # | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile
 
