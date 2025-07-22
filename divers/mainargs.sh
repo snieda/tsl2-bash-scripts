@@ -62,6 +62,24 @@ COLORS="RED GREEN YELLOW BLUE PURPLE CYAN LIGHTGRAY"
 for c in $COLORS; do I="$(($I+1))"; declare -x $c="$E0$I""m"; declare -x "L$c"="$E0$I""m"; done;
 export R='\x1b[0m'
 
+# to be shown on silent mode
+progressbar() {
+    calcf() { echo print "$1" | perl ; }
+    round() { calcf "$1" | awk '{ print int($1 +.5) }' ; }
+    width=80; current=$1; total=$2
+    # [[ $current > $total ]] && return 1
+    
+    quota=$(calcf "$current/$total")
+    percent=$( calcf "$quota*100")
+    # quota=$(bc <<< "$current/$total")
+    bcur=$(round "$quota*$width")
+    echo -en "\r$LBLUE$bold"
+    for ((ii=0;ii<=bcur;ii++)); do printf "▇"; done
+    echo -en "$R$GRAY$bold"
+    for ((ii=bcur; ii<width; ii++)); do printf "▇"; done
+    echo -en "$LYELLOW$bold ( $(printf '%.3s' $percent % ) ) $3$R"
+}
+
 PARENT_COMMAND=$(ps -o comm= $PPID)
 echo -en "$LYELLOW$bold"
 echo -en "\nstarting: $_ $0 $@ (bash_source: $BASH_SOURCE, parent: $PARENT_COMMAND)"

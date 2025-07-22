@@ -76,30 +76,39 @@
 
 [[ "$OPTARGS" == *"reset"* ]] && reset
 
+# csv file parameters
 csvfile=${csvfile:-$1}
-[[ "$csvfile" != "" ]] && [[ ! -f "$csvfile" ]] && echo -en "$LRED\nFAILED (nothing to do!)$R\n"; [[ "$_" != "$0" ]] && (return 1 2>>/dev/null || exit 1)
+[[ "$csvfile" != "" ]] && [[ ! -f "$csvfile" ]] \
+    && echo -en "$LRED\nFAILED (nothing to do!)$R\n"; [[ "$_" != "$0" ]] \
+    && (return 1 2>>/dev/null || exit 1)
 outputfile="$csvfile.result.csv"
 csvcol=${csvcol:-0}
+csvsep=${csvsep:-"\t"}                      # separator of columns in csvfile
+sequence="$(seq 4)"                         # optional sequence to be used instead of csvfile
+skip_headers=${skip_headers:-1}             # how many header lines of csvfile to ignore
 
+# filter parameters
+fields=${fields:-"id name"}                 # main filter
+fieldsep=${fieldsep:-"[:]"}                 # separator between fields key-value pair. default ':' json-like 
+date=${date:-$(date --iso-8601)}            # optional date variable
+
+# functional parameters
+runner=${runner:-curl}                      # which program to start inside the main call
+callrunner=${callrunner:-call_runner}        # hidden variable to be able to change the main call inside the loop
+sedrunner=${sedrunner:-'sed -n -E -e'}      # alternative: 'perl -0777 -pe'
+transformer=${transformer:-"tr '\n' '\f'"}  # transform pipe of runner before filtering. default: concat lines
+callback="printonly"                        # optional callback function to be called after filtering
+
+# curl (runner) parameters
 method=${method:-GET}
 accept=${accept:-"application/json"}
 url=${url:-'http://api.restful-api.dev/objects/$arg'}
-csvsep=${csvsep:-"\t"}
-fields=${fields:-"id name"}
-fieldsep=${fieldsep:-"[:]"}
-sequence="$(seq 4)"
-date=${date:-$(date --iso-8601)}
-skip_headers=${skip_headers:-1}
-runner=${runner:-curl}
-sedrunner=${sedrunner:-'sed -n -E -e'} # alternative: 'perl -0777 -pe'
-transformer=${transformer:-"tr '\n' '\f'"}
-callback="printonly"
 user=${user:-""}
 password=${password:-""}
 body=${body:-""}
 
 echo -en "$LBLUE\n"
-declare -p runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+declare -p callrunner runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 echo -en "$R\n"
 
 expression=""
@@ -107,14 +116,21 @@ replacement=""
 
 # helper function as default callback 
 printonly() {
-    #declare -i i=${1:-"$(</dev/stdin)"};
-    #echo "$args_: $1"
-    echo "$(</dev/stdin)"
+    declare -i i=${1:-"$(</dev/stdin)"};
+    echo "$args_: $1"
+    #echo "$(</dev/stdin)"
 }
 
+
+# to restore default variables
 reset() {
-    unset runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
+    unset callrunner runner sedrunner transformer csvfile csvsep csvcol outputfile method accept url user password body fields fieldsep sequence
 }
+
+#-----------------------------------------------------------------------------
+# public helpers for filtering
+#-----------------------------------------------------------------------------
+
 # field value is a string surrounded by double quotes
 # args: <field name>
 str() {
@@ -139,8 +155,12 @@ flt() {
     echo "$1"
 }
 
+#-----------------------------------------------------------------------------
+# internal filter evaluation
+#-----------------------------------------------------------------------------
+
 insertnestedvariables() {
-    a1=$1
+    local a1=$1
     while [[ $a1 == *"$"* ]]; do
         a1=$(eval "echo $a1" )
     done
@@ -167,6 +187,20 @@ createexpression() {
     echo "s/.*$expression/\\n$replacement/p"
 }
 
+# main runner, called in loop
+call_runner() {
+    $runner -kL $(sed -n -E -e 's/(--silent)/\1/p' <<<$OPTARGS) --trace-ascii "$csvfile.trace.log"  -X $method \
+    $url_ \
+    -d "$body" \
+    -u "$user:$password" \
+    -H "Authorization: Basic $authorization" \
+    -H "accept: $accept" \
+    | tee -a $csvfile.log \
+    | $transformer \
+    | $sedrunner "$regex_" | tee -a $outputfile \
+    | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
+}
+
 ##############################################################################
 # main routine
 
@@ -190,8 +224,9 @@ echo -en "\nsed expression is: $LGREEN$regex$R\n"
 [[ -f $outputfile ]] && rm $outputfile
 [[ -f $csvfile.log ]] && rm $csvfile.log
 i=0
+lc=$(cat $csvfile | wc -l)
 echo -en "\n$LYELLOW$bold=========================================================================="
-echo -en "\nstarting iteration through $csvfile (output: $outputfile)$R\n"
+echo -en "\nstarting iteration through $csvfile (lines: $lc, output: $outputfile)$R\n"
 while read -a line
 do
     if ((skip_headers)); then ((skip_headers--)); declare -a header=$line; echo -en "\nHEADER: $LGREEN${line[*]}$R\n"; continue; fi
@@ -201,19 +236,14 @@ do
     regex_=$(insertnestedvariables "\"$regex\"")
     i=$((i+1))
     if [[ ! $OPTARGS == *"--silent"* ]]; then
-        echo -en "\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R ==> URL: $LGREEN$url_\n\t\t\t\tRegEx: $regex_$R\n" | tee -a $csvfile.log
+        echo -en "\n\n=====> $LBLUE[$i:$csvcol]: ${header[$csvcol]}=\"$arg\"$R$LGREEN\n\t\tUrl: $url_\n\t\tRegEx: $regex_$R\n" | tee -a $csvfile.log
         [[ "$body" != "" ]] && echo -en "$LGREEN$bold$body$R"
+    else
+        progressbar $i $(($lc-1))
     fi
-    $runner -kL $(sed -n -E -e 's/(--silent)/\1/p' <<<$OPTARGS) --trace-ascii "$csvfile.trace.log"  -X $method \
-    $url_ \
-    -d "$body" \
-    -u "$user:$password" \
-    -H "Authorization: Basic $authorization" \
-    -H "accept: $accept" \
-    | tee -a $csvfile.log \
-    | $transformer \
-    | $sedrunner "$regex_" | tee -a $outputfile
-    # | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
+
+    $callrunner
+
     [[  $? != 0 ]] && echo -en "\n$LRED FAILED ($RESULT)!\n$R" && exit 1
 done < $csvfile
 

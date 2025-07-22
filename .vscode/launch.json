@@ -9,7 +9,15 @@
             "request": "launch",
             "name": "Bash-Debug (simplest configuration)",
             "program": "${file}",
-            "args": ["testmenu"]
+            "args": [ "genseq-test.csv", "lines test-lines.txt", "dates today 2025-07-25 day"]
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug reqs.sh",
+            "program": "reqs.sh",
+            "cwd": "${workspaceFolder}/divers",
+            "args": [ "_args=.args-zhs", "--silent"]
         }
     ]
 }

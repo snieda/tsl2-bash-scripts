@@ -3,7 +3,7 @@
 csvfile=zhs-week.csv
 csvseq=\t
 url='https://zhs-courtbuchung.de/reservations.php?action=showRevervations\&type_id=1\&date=${line[0]}\&page=${line[1]}'
-fields='s/.*?avaliable-cell-([0-9]{1,2})[^0-9]+?(1[7-9][:][0-9]{2})\s[-].*?/${line[0]}\tCourt\t\1\tat:\t\2/p'
+fields='s/.*?avaliable-cell-([0-9]{1,2})[^0-9]+?([1][7-9][:][0-9]{2})\s[-].*?/${line[0]}\tCourt\t\1\tat:\t\2/p'
 fieldsep=[=]
 sequence="$(seq 2 4)"
 transformer="tee /dev/null"
