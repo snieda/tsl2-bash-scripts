@@ -116,9 +116,7 @@ replacement=""
 
 # helper function as default callback 
 printonly() {
-    declare -i i=${1:-"$(</dev/stdin)"};
-    echo "$args_: $1"
-    #echo "$(</dev/stdin)"
+    [[ "$1" != "" ]] && echo -en "\r\n$BLUE$bold$1$R" || :
 }
 
 
@@ -198,7 +196,7 @@ call_runner() {
     | tee -a $csvfile.log \
     | $transformer \
     | $sedrunner "$regex_" | tee -a $outputfile \
-    | $callback         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
+    | $callback "$(</dev/stdin)"         # callback method by caller using pipe as input: declare -i i=${1:-$(</dev/stdin)};
 }
 
 ##############################################################################

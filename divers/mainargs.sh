@@ -7,7 +7,7 @@
 # 2. read arguments from file (default: scriptname + '.args') given by first arg '_args=<filename>'
 # 3. collect all options having no '='' to OPTARGS (and the array ARGS), given as arguments (like -myoption +myoption2")
 # 4. declare all key-value pairs, given as arguments (like myarg="some value")
-# 5. extended use with $1 as '_argsfolder': loop over all files in _argsfolder and call $2 (returns with 2)
+# 5. extended use with $1 as '_argsfolder': loop over all files in _argsfolder and call $2 as callback (returns with 2)
 #    the _argsfolder value MUST HAVE a globstar! (activate globstars with: shopt -s globstar) 
 #    usage: <executable-script> _argsfolder=<folder-containing-arg-files-with-globstar> <another-executable-script>
 #
